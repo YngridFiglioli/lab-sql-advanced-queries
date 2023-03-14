@@ -3,19 +3,24 @@
 
 use sakila;
 
-SELECT CONCAT(a1.first_name, ' ', a1.last_name) AS actor1, 
-       CONCAT(a2.first_name, ' ', a2.last_name) AS actor2,
-       COUNT(*) AS num_worked_together
-FROM actor a1
-JOIN film_actor fa1 ON a1.actor_id = fa1.actor_id
-JOIN film f1 ON fa1.film_id = f1.film_id
-JOIN film_actor fa2 ON f1.film_id = fa2.film_id
-JOIN actor a2 ON fa2.actor_id = a2.actor_id
-WHERE a1.actor_id < a2.actor_id
-GROUP BY a1.actor_id, a2.actor_id
-ORDER BY num_worked_together DESC;
+select fa1.actor_id, fa2.actor_id, fa1.film_id
+from sakila.film_actor fa1
+join sakila.film_actor fa2
+on fa1.actor_id < fa2.actor_id
+and fa1.film_id = fa2.film_id;
 
-SELECT count(film_actor.actor_id), actor.first_name, actor.last_name 
-FROM actor INNER JOIN film_actor ON actor.actor_id = film_actor.actor_id
-GROUP BY film_actor.actor_id
-ORDER BY count(film_actor.actor_id) DESC;
+with cte as (
+select *,
+row_number() over (partition by film_id order by total_films desc) as flag
+from (
+select film_id, actor_id, total_films
+from (
+select actor_id, count(film_id) as total_films 
+from sakila.film_actor
+group by actor_id
+) sub1
+join film_actor using(actor_id)
+) sub2 
+)
+select film_id, actor_id, total_films from cte
+where flag = 1;
